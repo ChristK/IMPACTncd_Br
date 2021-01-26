@@ -1,0 +1,28 @@
+Package: BrazilSaltModelmisc
+Type: Package
+Title: Brazil Salt Model Package
+Version: 0.2.0
+Date: 2019-05-01
+Author: Chris Kypridemos
+Maintainer: Chris Kypridemos <christodoulosk@gmail.com>
+Description: This package contains all the necessary R and C++ functions for the Brazil Salt Model.
+License: GPL (>=3)
+Encoding: UTF-8
+LazyData: true
+Byte-Compile: yes
+Imports: 
+  methods,
+  stats,
+  utils,
+  extraDistr,
+  data.table ,
+  Rcpp
+Suggests: 
+  gamlss,
+  jsonlite (>= 1.5),
+  MASS,
+  matrixStats,
+  reldist
+LinkingTo: Rcpp
+SystemRequirements: GNU make
+RoxygenNote: 7.0.2

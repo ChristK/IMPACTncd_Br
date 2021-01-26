@@ -1,0 +1,51 @@
+---
+title: "Brazilian salt model notes"
+author: "Chris Kypridemos"
+date: "13/09/2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Codes
+* Race
+  + 0 = non-white, non-brown, non-black
+  + 1 = brown/black
+  + 2 = white
+
+* Education
+  + 0 = less than 4 years
+  + 1 = 4 to 11 years (inclusive)
+  + 2 = 12 or more years
+  
+## General notes
+- For ages 30 and older Hamilton-Perry method for intra-census years interpolation and forecasting extrapolation (see Swanson et al 2010). To avoid excess over/under estimation, we limited cohort-change rates between 0.5 and 2. Then we calibrated to the official projection by age group and sex.
+
+- For the interpolation we used the Das Gupta 6 method (from a memorandum written in the 1980s by now-retired Prithwis Das Gupta, formerly of the Population Analysis Staff of the Population Division).
+
+- For ages younger that 30 we used linear interpolation because in these ages education is age dependent. As with ages >30 we limited change rates between 0.7 and 1.5. Then we calibrated to the official projection by age group and sex.
+
+- The population estimates from the above process were then calibrated to the official population size projections and back-projections by age and sex (from https://www.ibge.gov.br/estatisticas-novoportal/sociais/populacao/9114-retroprojecao-da-populacao.html?=&t=downloads
+and https://www.ibge.gov.br/estatisticas-novoportal/sociais/populacao/9109-projecao-da-populacao.html?=&t=downloads)
+
+- Why are there so many missing cases (~90%) in self reported CVD
+
+- For sbp I used the average of the last 3 of the 4 sbp measurements for each participant
+
+## Assumptions
+- Assumes race missing cases have similar age/sex distribution as the non missing ones
+
+- We assume cvd duration before 2013 (used for prevalence) same as in the US. This may only become relevant in a detailed CEA
+
+- We assume cvd 30-day fatality as in England (based on smolina et al for CHD and from hollander_incidence_2003 table3 for Stroke). Currently DEACTIVATED feature
+
+## Sources
+- Minnesota Population Center. Integrated Public Use Microdata Series, International: Version 7.0 [dataset]. Minneapolis, MN: IPUMS, 2018. [](https://doi.org/10.18128/D020.V7.0) (Researchers should also acknowledge the statistical agency that originally produced the data.) The licensing agreement for use of IPUMS-International data requires that users supply IPUMS-International with the title and full citation for any publications, research reports, or educational materials making use of the data or documentation.
+
+- Population from [](https://www.ibge.gov.br/estatisticas/sociais/populacao/9109-projecao-da-populacao.html?=&t=downloads) and more specifically the [projecoes_2018_populacao_2010_2060](ftp://ftp.ibge.gov.br/Projecao_da_Populacao/Projecao_da_Populacao_2018/projecoes_2018_populacao_2010_2060.xls)
+
+## Questions
+- Harmonise education for population / mortality
+- Are there any studies about the impact/bias from missing data in Brazilian demographics datasets?
