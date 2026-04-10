@@ -766,11 +766,11 @@ gg <- ggplot(
 ) +
   geom_point(size = 1,
              alpha = 5 / 5,
-             show.legend = F) +
-  geom_line(size = 1, alpha = 5 / 5) +
+             show.legend = FALSE) +
+  geom_line(linewidth = 1, alpha = 5 / 5) +
   geom_ribbon(alpha = 1 / 5,
               linetype = 0,
-              show.legend = F) +
+              show.legend = FALSE) +
   scale_x_continuous(name = "Year") +
   scale_y_continuous(name = "All-cause mortality") +
   facet_grid(sex ~ .)
@@ -793,11 +793,11 @@ gg <- ggplot(
 ) +
   geom_point(size = 1,
              alpha = 5 / 5,
-             show.legend = F) +
-  geom_line(size = 1, alpha = 5 / 5) +
+             show.legend = FALSE) +
+  geom_line(linewidth = 1, alpha = 5 / 5) +
   geom_ribbon(alpha = 1 / 5,
               linetype = 0,
-              show.legend = F) +
+              show.legend = FALSE) +
   scale_x_continuous(name = "Year") +
   scale_y_continuous(name = "All-cause mortality") +
   facet_grid(sex ~ .)
@@ -820,11 +820,11 @@ gg <- ggplot(
 ) +
   geom_point(size = 1,
              alpha = 5 / 5,
-             show.legend = F) +
-  geom_line(size = 1, alpha = 5 / 5) +
+             show.legend = FALSE) +
+  geom_line(linewidth = 1, alpha = 5 / 5) +
   geom_ribbon(alpha = 1 / 5,
               linetype = 0,
-              show.legend = F) +
+              show.legend = FALSE) +
   scale_x_continuous(name = "Year") +
   scale_y_continuous(name = "CHD mortality") +
   facet_grid(sex ~ .)
@@ -847,11 +847,11 @@ gg <- ggplot(
 ) +
   geom_point(size = 1,
              alpha = 5 / 5,
-             show.legend = F) +
-  geom_line(size = 1, alpha = 5 / 5) +
+             show.legend = FALSE) +
+  geom_line(linewidth = 1, alpha = 5 / 5) +
   geom_ribbon(alpha = 1 / 5,
               linetype = 0,
-              show.legend = F) +
+              show.legend = FALSE) +
   scale_x_continuous(name = "Year") +
   scale_y_continuous(name = "CHD mortality") +
   facet_grid(sex ~ .)
@@ -874,11 +874,11 @@ gg <- ggplot(
 ) +
   geom_point(size = 1,
              alpha = 5 / 5,
-             show.legend = F) +
-  geom_line(size = 1, alpha = 5 / 5) +
+             show.legend = FALSE) +
+  geom_line(linewidth = 1, alpha = 5 / 5) +
   geom_ribbon(alpha = 1 / 5,
               linetype = 0,
-              show.legend = F) +
+              show.legend = FALSE) +
   scale_x_continuous(name = "Year") +
   scale_y_continuous(name = "Stroke mortality") +
   facet_grid(sex ~ .)
@@ -901,11 +901,11 @@ gg <- ggplot(
 ) +
   geom_point(size = 1,
              alpha = 5 / 5,
-             show.legend = F) +
-  geom_line(size = 1, alpha = 5 / 5) +
+             show.legend = FALSE) +
+  geom_line(linewidth = 1, alpha = 5 / 5) +
   geom_ribbon(alpha = 1 / 5,
               linetype = 0,
-              show.legend = F) +
+              show.legend = FALSE) +
   scale_x_continuous(name = "Year") +
   scale_y_continuous(name = "Stroke mortality") +
   facet_grid(sex ~ .)

@@ -23,7 +23,7 @@
 # ********************************************************************************
 design <- list()
 design$iteration_n    <- 100L # Overrides design saved in file. If changed in design.R all outputs will be deleted
-design$clusternumber  <- 10L # Change to your number of CPU cores (explicit parallelisation)
+design$clusternumber  <- 30L # Change to your number of CPU cores (explicit parallelisation)
 design$n_cpus         <- 1L  # Change to your number of CPU cores (implicit parallelisation/Open MP)
 design$use_fixed_pop  <- TRUE
 design$logs           <- TRUE
@@ -62,12 +62,16 @@ if (exists("cl")) stopCluster(cl)
 time_mark("End of parallelisation")
 gc()
 
-setDTthreads(20L)
+setDTthreads(1L)
 file.rename(output_dir("simulation parameters temp.txt"),
             output_dir("simulation parameters.txt"))
 while (sink.number() > 0L) sink()
 
-if (design$process_output) source(file = "./output.R")
-
+if (design$process_output) {
+  source(file = "./potassium_cra.R")
+  source(file = "./output.R")
+  source(file = "./recompute_cpp_dpp.R")
+  source(file = "./paper_tables.R")
+}
 end_sim()
 

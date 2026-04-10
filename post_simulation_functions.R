@@ -40,8 +40,11 @@ output_dir <- function(x = character(0))
   paste0("./Output/", x)
 
 tt <- readLines(output_dir("simulation parameters.txt"))
+# Parse "Population fraction for ages X to Y = 0.00406..." — regex is robust to
+# changes in design$ageL/design$ageH, unlike the previous hard-coded offset 40.
 pop_fraction <-
-  as.numeric(substring(tt[[grep("^Population fraction ", tt)]], 40))
+  as.numeric(sub("^Population fraction [^=]*= *", "",
+                 grep("^Population fraction ", tt, value = TRUE)))
 
 dependencies(c("future",
                "future.apply",
@@ -235,6 +238,13 @@ std_graph <-
            subdir,
            y_axis_nam = var,
            filename = var) {
+    # Close any graphics devices this function opens before returning.
+    # Prevents spurious "opened the default graphics device" warnings from
+    # `future` when called inside multicore workers: ggsave2 can leave a
+    # null pdf device behind, and future's worker-hygiene check flags any
+    # diff in dev.list() between worker start and worker end.
+    on.exit(while (!is.null(dev.list())) dev.off(), add = TRUE)
+
     gg <- ggplot(
       dt[variable == var],
       aes(
@@ -249,7 +259,7 @@ std_graph <-
       geom_point(size = 1,
                  alpha = 5 / 5,
                  show.legend = FALSE) +
-      geom_line(size = 1, alpha = 5 / 5) +
+      geom_line(linewidth = 1, alpha = 5 / 5) +
       geom_ribbon(alpha = 1 / 5,
                   linetype = 0,
                   show.legend = FALSE) +

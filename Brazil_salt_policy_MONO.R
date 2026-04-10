@@ -56,7 +56,16 @@ lapply(scenarios_list, sys.source, envir = my_env)
 
 
 setDTthreads(20L)
+file.rename(output_dir("simulation parameters temp.txt"),
+            output_dir("simulation parameters.txt"))
+while (sink.number() > 0L) sink()
+
 if (design$process_output == TRUE) {
-		source(file = "./output.R")
+	source(file = "./potassium_cra.R")
+	source(file = "./output.R")
+	source(file = "./recompute_cpp_dpp.R")
+	source(file = "./paper_tables.R")
 }
+
+end_sim()
 

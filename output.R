@@ -23,12 +23,27 @@ friendly_scenario_names <-
     "PAHO Regulatory Targets", "Lowest World Regulatory Targets",
     "Potassium Salt 10%", "FOPL Warning 100%", "FOPL Warning 70%",
     "FOPL Traffic Light 100%", "FOPL Traffic light 70%",
-    "Media Campaigns", "5% Reduction in 10 Years") # in the order of sc00, sc01, sc02....
+    "Media Campaigns", "5% Reduction in 10 Years",
+    "Potassium Salt 10% (Na+K)") # in the order of sc00, sc01, sc02, ..., sc12
 
 source(file = "./post_simulation_functions.R")
 options(future.fork.enable = TRUE) # enable fork in Rstudio
-plan(multiprocess)
+plan(multicore) # was plan(multiprocess); multiprocess removed in future 1.32.0
 # plan(sequential)
+
+# Muffle benign graphics-device hygiene warnings from future workers.
+# cowplot::ggsave2 necessarily opens a graphics device to render each plot;
+# future's worker-hygiene check flags this as "opened the default graphics
+# device" even though the files are written correctly. We match only the
+# two specific known-benign messages, so real warnings still surface.
+muffle_device_warnings <- function(expr) {
+  withCallingHandlers(expr, warning = function(w) {
+    if (grepl("opened the default graphics device|must close any opened devices",
+              conditionMessage(w))) {
+      invokeRestart("muffleWarning")
+    }
+  })
+}
 
 disease_out <- fread(output_dir("disease_output.csv"))
 disease_out[, all_mrtl := other_mrtl + stroke_mrtl + chd_mrtl]
@@ -67,181 +82,78 @@ xps_out <- summarise_distr(xps_out, design, pr, FALSE, FALSE)
 fwrite(xps_out, output_dir("Exposures/rf.csv"))
 
 
-
 # Graphs -------------------------------------------------------------------
-# CPP & DPP
-# sex == "All" & agegroup == "All"
-tt <- cpp_dpp_out[sex == "All" & agegroup == "All"]
-future_lapply(unique(tt$variable), std_graph, tt, "Summaries", future.packages = c("ggplot2", "cowplot"))
+# Render std_graph across the three (sex, agegroup) slices.
+# Replaces 9 near-identical future_lapply blocks from the pre-modernisation version.
+graph_slices <- function(dt, subdir) {
+  slices <- list(
+    overall     = dt[sex == "All"  & agegroup == "All"],
+    by_sex      = dt[sex != "All"  & agegroup == "All"],
+    by_sex_age  = dt[sex != "All"  & agegroup != "All"]
+  )
+  for (sl in slices) {
+    if (nrow(sl) == 0L) next
+    muffle_device_warnings(
+      future_lapply(unique(sl$variable), std_graph, sl, subdir,
+                    future.packages = c("ggplot2", "cowplot"))
+    )
+  }
+}
 
-# sex != "All" & agegroup == "All"
-tt <- cpp_dpp_out[sex != "All" & agegroup == "All"]
-future_lapply(unique(tt$variable), std_graph, tt, "Summaries", future.packages = c("ggplot2", "cowplot"))
-
-# sex != "All" & agegroup != "All"
-tt <- cpp_dpp_out[sex != "All" & agegroup != "All"]
-future_lapply(unique(tt$variable), std_graph, tt, "Summaries", future.packages = c("ggplot2", "cowplot"))
-
-# Cases & Deaths graphs for inspection
-# sex == "All" & agegroup == "All"
-tt <- disease_out_cmpct[sex == "All" & agegroup == "All"]
-future_lapply(unique(tt$variable), std_graph, tt, "Graphs", future.packages = c("ggplot2", "cowplot"))
-
-# sex != "All" & agegroup == "All"
-tt <- disease_out_cmpct[sex != "All" & agegroup == "All"]
-future_lapply(unique(tt$variable), std_graph, tt, "Graphs", future.packages = c("ggplot2", "cowplot"))
-
-# sex != "All" & agegroup != "All"
-tt <- disease_out_cmpct[sex != "All" & agegroup != "All"]
-future_lapply(unique(tt$variable), std_graph, tt, "Graphs", future.packages = c("ggplot2", "cowplot"))
-
-# Exposure graphs for inspection
-# sex == "All" & agegroup == "All"
-tt <- xps_out[sex == "All" & agegroup == "All"]
-future_lapply(unique(tt$variable), std_graph, tt, "Exposures", future.packages = c("ggplot2", "cowplot"))
-
-# sex != "All" & agegroup == "All"
-tt <- xps_out[sex != "All" & agegroup == "All"]
-future_lapply(unique(tt$variable), std_graph, tt, "Exposures", future.packages = c("ggplot2", "cowplot"))
-
-# sex != "All" & agegroup != "All"
-tt <- xps_out[sex != "All" & agegroup != "All"]
-future_lapply(unique(tt$variable), std_graph, tt, "Exposures", future.packages = c("ggplot2", "cowplot"))
+graph_slices(cpp_dpp_out,       "Summaries") # CPP & DPP
+graph_slices(disease_out_cmpct, "Graphs")    # Cases & Deaths for inspection
+graph_slices(xps_out,           "Exposures") # Exposures for inspection
 
 
 # Validation ------------------------------------------------
-# absolute
-deaths <-
-  fread(
-    "./Population_statistics/mortality_all_cause_estimates_2000_2016_age_sex_race_educ.csv",
-    header = TRUE,
-    skip = 0
-  )[agegroup %in% agegrp_name(design$ageL, design$ageH, 5L, FALSE, FALSE, design$ageH)]
-deaths <-
-  deaths[, .(deaths = sum(deaths), pop_size = sum(pop)), by = .(year, sex)]
-deaths_chd <-
-  fread(
-    "./Population_statistics/mortality_chd_estimates_2000_2016_age_sex_race_educ.csv",
-    header = TRUE,
-    skip = 0
-  )[agegroup %in% agegrp_name(design$ageL, design$ageH, 5L, FALSE, FALSE, design$ageH)]
-deaths_chd <-
-  deaths_chd[, .(deaths = sum(deaths)), by = .(year, sex)]
-deaths_stroke <-
-  fread(
-    "./Population_statistics/mortality_stroke_estimates_2000_2016_age_sex_race_educ.csv",
-    header = TRUE,
-    skip = 0
-  )[agegroup %in% agegrp_name(design$ageL, design$ageH, 5L, FALSE, FALSE, design$ageH)]
-deaths_stroke <-
-  deaths_stroke[, .(deaths = sum(deaths)), by = .(year, sex)]
-
-strata <- c("year", "sex")
-deaths[deaths_chd, chd_mrtl := i.deaths, on = strata]
-deaths[deaths_stroke, stroke_mrtl := i.deaths, on = strata]
-deaths[, other_mrtl := deaths - chd_mrtl - stroke_mrtl]
-deaths <- melt(deaths, 1:2, value.name = "50.0%")
-deaths[, type := "Observed"]
-replace_from_table(deaths, "sex", 1:2, c("men", "women"))
-deaths[variable == "deaths", variable := "all_mrtl"]
-tt <-
-  disease_out_cmpct[sex != "All" &
-                      agegroup == "All" &
-                      scenario == friendly_scenario_names[[1]]]
-tt[, type := "Modelled"]
-
-
-tt <- rbind(tt, deaths, use.names = TRUE, fill = TRUE)
-for (j in seq_len(ncol(tt))) {
-  if (is.numeric(tt[[j]]))
-    set(tt, which(is.na(tt[[j]])), j, 0)
-}
-
-future_lapply(unique(tt$variable), function(x) {
-  if (grepl("_mrtl$|_size$", x)) {
-    gg <- ggplot(tt[variable == x],
-                 aes(
-                   x = year,
-                   y =    `50.0%`,
-                   ymin = `2.5%`,
-                   ymax = `97.5%`,
-                   col = type,
-                   fill = type
-                 )) +
-      geom_point(size = 1,
-                 alpha = 5 / 5,
-                 show.legend = F) +
-      geom_line(size = 1, alpha = 5 / 5) +
-      geom_ribbon(alpha = 1 / 5,
-                  linetype = 0,
-                  show.legend = F) +
-      scale_x_continuous(name = "Year") +
-      scale_y_continuous(name = x) +
-      facet_grid(sex ~ .)+
-      ggtitle(x)
-
-    cowplot::ggsave2(
-      filename = paste0("absolute_", x, "_validation.png"),
-      gg,
-      height = 9,
-      width = 16,
-      units = "in",
-      path = output_dir("Validation")
-    )
+# Load observed mortality once, in both absolute and per-100k forms.
+# Replaces two copy-pasted blocks that each re-read the same 3 CSVs.
+load_observed_deaths <- function() {
+  load_one <- function(path) {
+    fread(path, header = TRUE)[
+      agegroup %in% agegrp_name(design$ageL, design$ageH, 5L, FALSE, FALSE, design$ageH)
+    ]
   }
-}, future.packages = c("ggplot2", "cowplot"))
+  all_cause <- load_one("./Population_statistics/mortality_all_cause_estimates_2000_2016_age_sex_race_educ.csv")
+  chd       <- load_one("./Population_statistics/mortality_chd_estimates_2000_2016_age_sex_race_educ.csv")
+  stroke    <- load_one("./Population_statistics/mortality_stroke_estimates_2000_2016_age_sex_race_educ.csv")
 
-# rates
-deaths <-
-  fread(
-    "./Population_statistics/mortality_all_cause_estimates_2000_2016_age_sex_race_educ.csv",
-    header = TRUE,
-    skip = 0
-  )[agegroup %in% agegrp_name(design$ageL, design$ageH, 5L, FALSE, FALSE, design$ageH)]
-deaths <-
-  deaths[, .(deaths = 1e5 * sum(deaths) / sum(pop)), by = .(year, sex)]
-deaths_chd <-
-  fread(
-    "./Population_statistics/mortality_chd_estimates_2000_2016_age_sex_race_educ.csv",
-    header = TRUE,
-    skip = 0
-  )[agegroup %in% agegrp_name(design$ageL, design$ageH, 5L, FALSE, FALSE, design$ageH)]
-deaths_chd <-
-  deaths_chd[, .(deaths = 1e5 * sum(deaths) / sum(pop)), by = .(year, sex)]
-deaths_stroke <-
-  fread(
-    "./Population_statistics/mortality_stroke_estimates_2000_2016_age_sex_race_educ.csv",
-    header = TRUE,
-    skip = 0
-  )[agegroup %in% agegrp_name(design$ageL, design$ageH, 5L, FALSE, FALSE, design$ageH)]
-deaths_stroke <-
-  deaths_stroke[, .(deaths = 1e5 * sum(deaths) / sum(pop)), by = .(year, sex)]
+  # absolute counts
+  abs_dt <- all_cause[, .(deaths = sum(deaths), pop_size = sum(pop)), by = .(year, sex)]
+  abs_dt[chd[,    .(deaths = sum(deaths)), by = .(year, sex)], chd_mrtl    := i.deaths, on = c("year", "sex")]
+  abs_dt[stroke[, .(deaths = sum(deaths)), by = .(year, sex)], stroke_mrtl := i.deaths, on = c("year", "sex")]
+  abs_dt[, other_mrtl := deaths - chd_mrtl - stroke_mrtl]
 
-strata <- c("year", "sex")
-deaths[deaths_chd, chd_mrtl_rate := i.deaths, on = strata]
-deaths[deaths_stroke, stroke_mrtl_rate := i.deaths, on = strata]
-deaths[, other_mrtl_rate := deaths - chd_mrtl_rate - stroke_mrtl_rate]
-# deaths[, deaths := NULL]
-deaths <- melt(deaths, 1:2, value.name = "50.0%")
-deaths[, type := "Observed"]
-replace_from_table(deaths, "sex", 1:2, c("men", "women"))
-deaths[variable=="deaths", variable := "all_mrtl_rate"]
-tt <-
-  disease_out_cmpct[sex != "All" &
-                      agegroup == "All" &
-                      scenario == friendly_scenario_names[[1]] &
-                      like(variable, "_mrtl_rate$")]
-tt[, type := "Modelled"]
+  # rates per 100k
+  rate_dt <- all_cause[, .(deaths = 1e5 * sum(deaths) / sum(pop)), by = .(year, sex)]
+  rate_dt[chd[,    .(deaths = 1e5 * sum(deaths) / sum(pop)), by = .(year, sex)], chd_mrtl_rate    := i.deaths, on = c("year", "sex")]
+  rate_dt[stroke[, .(deaths = 1e5 * sum(deaths) / sum(pop)), by = .(year, sex)], stroke_mrtl_rate := i.deaths, on = c("year", "sex")]
+  rate_dt[, other_mrtl_rate := deaths - chd_mrtl_rate - stroke_mrtl_rate]
 
-# TODO rates need to calculate per each iteration
-tt <- rbind(tt, deaths, use.names = TRUE, fill = TRUE)
-for (j in seq_len(ncol(tt))) {
-  if (is.numeric(tt[[j]]))
-    set(tt, which(is.na(tt[[j]])), j, 0)
+  list(abs = abs_dt, rate = rate_dt)
 }
 
-future_lapply(unique(tt$variable), function(x) {
-  gg <- ggplot(tt[variable == x],
+# Given a wide-form observed table and a modelled subset, melt + join + zero-NAs
+# into the shape make_validation_plot expects.
+finalise_validation_frame <- function(observed_wide, modelled, deaths_rename) {
+  obs <- melt(observed_wide, 1:2, value.name = "50.0%")
+  obs[, type := "Observed"]
+  replace_from_table(obs, "sex", 1:2, c("men", "women"))
+  obs[variable == "deaths", variable := deaths_rename]
+
+  mod <- copy(modelled)[, type := "Modelled"]
+  out <- rbind(mod, obs, use.names = TRUE, fill = TRUE)
+  for (j in seq_len(ncol(out)))
+    if (is.numeric(out[[j]])) set(out, which(is.na(out[[j]])), j, 0)
+  out
+}
+
+make_validation_plot <- function(x, dt, filename_prefix, y_label_suffix = "") {
+  # See comment in std_graph: close any leaked devices before the worker
+  # returns so future's device-hygiene check stays quiet.
+  on.exit(while (!is.null(dev.list())) dev.off(), add = TRUE)
+
+  gg <- ggplot(dt[variable == x],
                aes(
                  x = year,
                  y =    `50.0%`,
@@ -250,27 +162,50 @@ future_lapply(unique(tt$variable), function(x) {
                  col = type,
                  fill = type
                )) +
-    geom_point(size = 1,
-               alpha = 5 / 5,
-               show.legend = FALSE) +
-    geom_line(size = 1, alpha = 5 / 5) +
-    geom_ribbon(alpha = 1 / 5,
-                linetype = 0,
-                show.legend = FALSE) +
+    geom_point(size = 1, alpha = 1, show.legend = FALSE) +
+    geom_line(linewidth = 1, alpha = 1) +
+    geom_ribbon(alpha = 1 / 5, linetype = 0, show.legend = FALSE) +
     scale_x_continuous(name = "Year") +
-    scale_y_continuous(name = paste0(x, " per 100,000")) +
+    scale_y_continuous(name = paste0(x, y_label_suffix)) +
     facet_grid(sex ~ .) +
     ggtitle(x)
 
   cowplot::ggsave2(
-    filename = paste0("rate_", x, "_validation.png"),
+    filename = paste0(filename_prefix, x, "_validation.png"),
     gg,
     height = 9,
     width = 16,
     units = "in",
     path = output_dir("Validation")
   )
-}, future.packages = c("ggplot2", "cowplot"))
-# Export tables --------------------------------------------------
+}
 
-# if (all(c(value(f1), value(f2), value(f3), value(f4)) == rep("finish", 4))) print("Finish exporting summaries")
+observed <- load_observed_deaths()
+
+base_modelled <- disease_out_cmpct[sex != "All" &
+                                     agegroup == "All" &
+                                     scenario == friendly_scenario_names[[1]]]
+
+# absolute counts validation
+abs_dt <- finalise_validation_frame(observed$abs, base_modelled, "all_mrtl")
+muffle_device_warnings(
+  future_lapply(
+    grep("_mrtl$|_size$", unique(abs_dt$variable), value = TRUE),
+    make_validation_plot, abs_dt, "absolute_",
+    future.packages = c("ggplot2", "cowplot")
+  )
+)
+
+# rates validation
+# TODO rates need to calculate per each iteration
+rate_dt <- finalise_validation_frame(
+  observed$rate,
+  base_modelled[like(variable, "_mrtl_rate$")],
+  "all_mrtl_rate"
+)
+muffle_device_warnings(
+  future_lapply(
+    unique(rate_dt$variable), make_validation_plot, rate_dt, "rate_", " per 100,000",
+    future.packages = c("ggplot2", "cowplot")
+  )
+)
